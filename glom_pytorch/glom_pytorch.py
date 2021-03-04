@@ -6,12 +6,14 @@ from einops import rearrange, repeat
 
 # helpers
 
+
 def exists(val):
     return val is not None
 
 # class
 
-def Glom(nn.Module):
+
+class Glom(nn.Module):
     def __init__():
         super().__init__()
 
