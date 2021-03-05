@@ -86,6 +86,9 @@ recon_img = patches_to_images(top_level)
 loss = F.mse_loss(img, recon_img)
 loss.backward()
 ```
+### Appreciation
+
+Thanks goes out to <a href="https://github.com/cfoster0">Cfoster0</a> for reviewing the code
 
 ### Todo
 
