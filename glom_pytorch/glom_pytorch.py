@@ -140,9 +140,8 @@ class Glom(nn.Module):
             levels_sum = torch.stack((levels, bottom_up_out, top_down_out, consensus)).sum(dim = 0) # hinton said to use the weighted mean of (1) bottom up (2) top down (3) previous level value {t - 1} (4) consensus value
             levels_mean = levels_sum / rearrange(num_contributions, 'l -> () () l ()')
 
-            levels = levels_mean  # set for next iteratoin
+            levels = levels_mean  # set for next iteration
             hiddens.append(levels)
-
 
         if return_all:
             return torch.stack(hiddens)  # return (time step, batch, num columns, levels, dimension)
