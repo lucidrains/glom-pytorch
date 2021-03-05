@@ -51,6 +51,46 @@ all_levels = model(img, iters = 12, return_all = True) # (13, 1, 256, 6, 512) - 
 top_level_output = all_levels[7, :, :, -1] # (1, 256, 512) - (batch, patches, dimension)
 ```
 
+Denoising self-supervised learning for encouraging emergence, as described by Hinton
+
+```python
+import torch
+import torch.nn.functional as F
+from torch import nn
+from einops.layers.torch import Rearrange
+
+from glom_pytorch import Glom
+
+model = Glom(
+    dim = 512,         # dimension
+    levels = 6,        # number of levels
+    image_size = 224,  # image size
+    patch_size = 14    # patch size
+)
+
+img = torch.randn(1, 3, 224, 224)
+noised_img = img + torch.randn_like(img)
+
+all_levels = model(noised_img, return_all = True)
+
+patches_to_images = nn.Sequential(
+    nn.Linear(512, 14 * 14 * 3),
+    Rearrange('b (h w) (p1 p2 c) -> b c (h p1) (w p2)', p1 = 14, p2 = 14, h = (224 // 14))
+)
+
+top_level = all_levels[6, :, :, -1]
+recon_img = patches_to_images(top_level)
+
+# do self-supervised learning by denoising
+
+loss = F.mse_loss(img, recon_img)
+loss.backward()
+```
+
+### Todo
+
+- [ ] contrastive / consistency regularization of top-ish levels
+
 ## Citations
 
 ```bibtex
