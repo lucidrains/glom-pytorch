@@ -23,15 +23,19 @@ def default(val, d):
 class GroupedFeedForward(nn.Module):
     def __init__(self, *, dim, groups, mult = 4):
         super().__init__()
-        self.project_in  = nn.Parameter(torch.randn(groups, dim, dim * 4))
-        self.nonlin      = nn.GELU()
-        self.project_out = nn.Parameter(torch.randn(groups, dim * 4, dim))
+        total_dim = dim * groups # levels * dim
+        self.net = nn.Sequential(
+            nn.Conv1d(total_dim, total_dim * 4, 1, groups = groups),
+            nn.GELU(),
+            nn.Conv1d(total_dim * 4, total_dim, 1, groups = groups)
+        )
 
     def forward(self, levels):
-        x = einsum('b n l d, l d e -> b n l e', levels, self.project_in)
-        x = self.nonlin(x)
-        x = einsum('b n l d, l d e -> b n l e', x, self.project_out)
-        return x
+        b, n, l, d = levels.shape
+        levels = rearrange(levels, 'b n l d -> b (l d) n')
+        out = self.net(levels)
+        out = rearrange(out, 'b (l d) n -> b n l d', l = l)
+        return out
 
 class ConsensusAttention(nn.Module):
     def __init__(self, attend_self = True, local_consensus_radius = 0):
