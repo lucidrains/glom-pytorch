@@ -79,8 +79,8 @@ class Glom(nn.Module):
         self.init_levels = nn.Parameter(torch.randn(levels, dim))
 
         # bottom-up and top-down
-        self.bottom_up = GroupedFeedForward(dim = dim, groups = levels)
-        self.top_down = GroupedFeedForward(dim = dim, groups = levels)
+        self.bottom_up = GroupedFeedForward(dim = dim, groups = levels - 1)
+        self.top_down = GroupedFeedForward(dim = dim, groups = levels - 1)
 
         # consensus attention
         self.attention = ConsensusAttention(attend_self = consensus_self)
@@ -101,10 +101,10 @@ class Glom(nn.Module):
         hiddens = [levels]
 
         for _ in range(iters):
-            levels = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
+            levels_with_input = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
 
-            bottom_up_out = self.bottom_up(levels[..., :-1, :])
-            top_down_out = self.top_down(levels[..., 1:, :])
+            bottom_up_out = self.bottom_up(levels_with_input[..., 1:-1, :])
+            top_down_out = self.top_down(levels_with_input[..., 2:, :])
 
             bottom_up_out = torch.cat((bottom_level, bottom_up_out), dim = -2)
             top_down_out = F.pad(top_down_out, (0, 0, 0, 1), value = 0.)
@@ -112,8 +112,6 @@ class Glom(nn.Module):
             consensus = self.attention(levels)
 
             levels = torch.stack((levels, bottom_up_out, top_down_out, consensus)).mean(dim = 0) # hinton said to use the weighted mean of (1) bottom up (2) top down (3) previous level value {t - 1} (4) consensus value
-            levels = levels[..., 1:, :]  # excise out the bottom level
-
             hiddens.append(levels)
 
         if return_all:
