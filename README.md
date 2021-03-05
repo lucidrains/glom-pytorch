@@ -31,6 +31,8 @@ levels = model(img, iters = 12) # (1, 256, 6, 512) - (batch - patches - levels -
 
 If you were to pass the `return_all = True` keyword argument on forward, you will be returned all the column and level states per iteration, including the initial state (so number of iterations + 1). You can then use this to attach any losses to any time step you wish, to induce emergence of whatever.
 
+This also gives you access to all the data for clustering for the theorized islands that should form.
+
 ```python
 import torch
 from glom_pytorch import Glom
