@@ -36,10 +36,22 @@ class GroupedFeedForward(nn.Module):
         return self.net(levels)
 
 class ConsensusAttention(nn.Module):
-    def __init__(self, attend_self = True, local_consensus_radius = 0):
+    def __init__(self, num_patches_side, attend_self = True, local_consensus_radius = 0):
         super().__init__()
         self.attend_self = attend_self
         self.local_consensus_radius = local_consensus_radius
+
+        if self.local_consensus_radius > 0:
+            coors = torch.stack(torch.meshgrid(
+                torch.arange(num_patches_side),
+                torch.arange(num_patches_side)
+            )).float()
+
+            coors = rearrange(coors, 'c h w -> (h w) c')
+            dist = torch.cdist(coors, coors)
+            mask_non_local = dist > self.local_consensus_radius
+            mask_non_local = rearrange(mask_non_local, 'i j -> () i j')
+            self.register_buffer('non_local_mask', mask_non_local)
 
     def forward(self, levels):
         _, n, _, d, device = *levels.shape, levels.device
@@ -54,19 +66,8 @@ class ConsensusAttention(nn.Module):
 
         if self.local_consensus_radius > 0:
             h = w = int(sqrt(n))
-
-            coors = torch.stack(torch.meshgrid(
-                torch.arange(h, device = device),
-                torch.arange(w, device = device)
-            )).float()
-
-            coors = rearrange(coors, 'c h w -> (h w) c')
-            dist = torch.cdist(coors, coors)
-            mask_non_local = dist > self.local_consensus_radius
-            mask_non_local = rearrange(mask_non_local, 'i j -> () i j')
             max_neg_value = -torch.finfo(sim.dtype).max
-
-            sim.masked_fill_(mask_non_local, max_neg_value)
+            sim.masked_fill_(self.non_local_mask, max_neg_value)
 
         attn = sim.softmax(dim = -1)
         out = einsum('b l i j, b j l d -> b i l d', attn, levels)
@@ -87,7 +88,8 @@ class Glom(nn.Module):
     ):
         super().__init__()
         # bottom level - incoming image, tokenize and add position
-        num_patches = (image_size // patch_size) ** 2
+        num_patches_side = (image_size // patch_size)
+        num_patches =  num_patches_side ** 2
         self.levels = levels
 
         self.image_to_tokens = nn.Sequential(
@@ -104,7 +106,7 @@ class Glom(nn.Module):
         self.top_down = GroupedFeedForward(dim = dim, groups = levels - 1)
 
         # consensus attention
-        self.attention = ConsensusAttention(attend_self = consensus_self, local_consensus_radius = local_consensus_radius)
+        self.attention = ConsensusAttention(num_patches_side, attend_self = consensus_self, local_consensus_radius = local_consensus_radius)
 
     def forward(self, img, iters = None, return_all = False):
         b, h, w, _, device = *img.shape, img.device
