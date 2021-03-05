@@ -44,7 +44,7 @@ class ConsensusAttention(nn.Module):
         sim = einsum('b i l d, b j l d -> b l i j', q, k) * (d ** -0.5)
 
         if not self.attend_self:
-            self_mask = torch.eye(n, device = device)
+            self_mask = torch.eye(n, device = device, dtype = torch.bool)
             self_mask = rearrange(self_mask, 'i j -> () () i j')
             sim.masked_fill_(self_mask, TOKEN_ATTEND_SELF_VALUE)
 
@@ -61,7 +61,8 @@ class Glom(nn.Module):
         dim = 512,
         levels = 6,
         image_size = 224,
-        patch_size = 14
+        patch_size = 14,
+        consensus_self = False
     ):
         super().__init__()
         # bottom level - incoming image, tokenize and add position
@@ -82,7 +83,7 @@ class Glom(nn.Module):
         self.top_down = GroupedFeedForward(dim = dim, groups = levels)
 
         # consensus attention
-        self.attention = ConsensusAttention(attend_self = False)
+        self.attention = ConsensusAttention(attend_self = consensus_self)
 
     def forward(self, img, iters = None):
         b, device = img.shape[0], img.device
