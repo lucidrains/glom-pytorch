@@ -93,7 +93,9 @@ class Glom(nn.Module):
         n = tokens.shape[1]
 
         pos_embs = self.pos_emb(torch.arange(n, device = device))
-        bottom_level = tokens + rearrange(pos_embs, 'n d -> () n d')
+        pos_embs = rearrange(pos_embs, 'n d -> () n () d')
+
+        bottom_level = tokens
         bottom_level = rearrange(bottom_level, 'b n d -> b n () d')
 
         levels = repeat(self.init_levels, 'l d -> b n l d', b = b, n = n)
@@ -104,7 +106,7 @@ class Glom(nn.Module):
             levels_with_input = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
 
             bottom_up_out = self.bottom_up(levels_with_input[..., 1:-1, :])
-            top_down_out = self.top_down(levels_with_input[..., 2:, :])
+            top_down_out = self.top_down(levels_with_input[..., 2:, :] + pos_embs) # positional embeddings given to top-down networks
 
             bottom_up_out = torch.cat((bottom_level, bottom_up_out), dim = -2)
             top_down_out = F.pad(top_down_out, (0, 0, 0, 1), value = 0.)
