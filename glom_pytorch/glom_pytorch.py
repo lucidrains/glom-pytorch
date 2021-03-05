@@ -123,6 +123,9 @@ class Glom(nn.Module):
 
         hiddens = [levels]
 
+        num_contributions = torch.empty(self.levels, device = device).fill_(4)
+        num_contributions[-1] = 3  # top level does not get a top-down contribution, so have to account for this when doing the weighted mean
+
         for _ in range(iters):
             levels_with_input = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
 
@@ -134,8 +137,12 @@ class Glom(nn.Module):
 
             consensus = self.attention(levels)
 
-            levels = torch.stack((levels, bottom_up_out, top_down_out, consensus)).mean(dim = 0) # hinton said to use the weighted mean of (1) bottom up (2) top down (3) previous level value {t - 1} (4) consensus value
+            levels_sum = torch.stack((levels, bottom_up_out, top_down_out, consensus)).sum(dim = 0) # hinton said to use the weighted mean of (1) bottom up (2) top down (3) previous level value {t - 1} (4) consensus value
+            levels_mean = levels_sum / rearrange(num_contributions, 'l -> () () l ()')
+
+            levels = levels_mean  # set for next iteratoin
             hiddens.append(levels)
+
 
         if return_all:
             return torch.stack(hiddens)  # return (time step, batch, num columns, levels, dimension)
