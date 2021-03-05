@@ -86,6 +86,29 @@ recon_img = patches_to_images(top_level)
 loss = F.mse_loss(img, recon_img)
 loss.backward()
 ```
+
+You can pass in the state of the column and levels back into the model to continue where you left off (perhaps if you are processing consecutive frames of a slow video, as mentioned in the paper)
+
+```python
+import torch
+from glom_pytorch import Glom
+
+model = Glom(
+    dim = 512,
+    levels = 6,
+    image_size = 224,
+    patch_size = 14
+)
+
+img1 = torch.randn(1, 3, 224, 224)
+img2 = torch.randn(1, 3, 224, 224)
+img3 = torch.randn(1, 3, 224, 224)
+
+levels1 = model(img1, iters = 12)                   # show image 1 for 12 iterations
+levels2 = model(img2, levels = levels1, iters = 10) # image 2 for 10 iteratoins
+levels3 = model(img3, levels = levels2, iters = 6)  # image 3 for 6 iterations
+```
+
 ### Appreciation
 
 Thanks goes out to <a href="https://github.com/cfoster0">Cfoster0</a> for reviewing the code

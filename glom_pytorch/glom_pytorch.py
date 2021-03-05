@@ -108,7 +108,7 @@ class Glom(nn.Module):
         # consensus attention
         self.attention = ConsensusAttention(num_patches_side, attend_self = consensus_self, local_consensus_radius = local_consensus_radius)
 
-    def forward(self, img, iters = None, return_all = False):
+    def forward(self, img, iters = None, levels = None, return_all = False):
         b, h, w, _, device = *img.shape, img.device
         iters = default(iters, self.levels * 2)   # need to have twice the number of levels of iterations in order for information to propagate up and back down. can be overridden
 
@@ -121,7 +121,8 @@ class Glom(nn.Module):
         bottom_level = tokens
         bottom_level = rearrange(bottom_level, 'b n d -> b n () d')
 
-        levels = repeat(self.init_levels, 'l d -> b n l d', b = b, n = n)
+        if not exists(levels):
+            levels = repeat(self.init_levels, 'l d -> b n l d', b = b, n = n)
 
         hiddens = [levels]
 
