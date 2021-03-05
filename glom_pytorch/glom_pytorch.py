@@ -1,3 +1,4 @@
+from math import sqrt
 import torch
 import torch.nn.functional as F
 from torch import nn, einsum
@@ -33,9 +34,10 @@ class GroupedFeedForward(nn.Module):
         return x
 
 class ConsensusAttention(nn.Module):
-    def __init__(self, attend_self = True):
+    def __init__(self, attend_self = True, local_consensus_radius = 0):
         super().__init__()
         self.attend_self = attend_self
+        self.local_consensus_radius = local_consensus_radius
 
     def forward(self, levels):
         _, n, _, d, device = *levels.shape, levels.device
@@ -47,6 +49,22 @@ class ConsensusAttention(nn.Module):
             self_mask = torch.eye(n, device = device, dtype = torch.bool)
             self_mask = rearrange(self_mask, 'i j -> () () i j')
             sim.masked_fill_(self_mask, TOKEN_ATTEND_SELF_VALUE)
+
+        if self.local_consensus_radius > 0:
+            h = w = int(sqrt(n))
+
+            coors = torch.stack(torch.meshgrid(
+                torch.arange(h, device = device),
+                torch.arange(w, device = device)
+            )).float()
+
+            coors = rearrange(coors, 'c h w -> (h w) c')
+            dist = torch.cdist(coors, coors)
+            mask_non_local = dist > self.local_consensus_radius
+            mask_non_local = rearrange(mask_non_local, 'i j -> () i j')
+            max_neg_value = -torch.finfo(sim.dtype).max
+
+            sim.masked_fill_(mask_non_local, max_neg_value)
 
         attn = sim.softmax(dim = -1)
         out = einsum('b l i j, b j l d -> b i l d', attn, levels)
@@ -62,7 +80,8 @@ class Glom(nn.Module):
         levels = 6,
         image_size = 224,
         patch_size = 14,
-        consensus_self = False
+        consensus_self = False,
+        local_consensus_radius = 0
     ):
         super().__init__()
         # bottom level - incoming image, tokenize and add position
@@ -83,10 +102,10 @@ class Glom(nn.Module):
         self.top_down = GroupedFeedForward(dim = dim, groups = levels - 1)
 
         # consensus attention
-        self.attention = ConsensusAttention(attend_self = consensus_self)
+        self.attention = ConsensusAttention(attend_self = consensus_self, local_consensus_radius = local_consensus_radius)
 
     def forward(self, img, iters = None, return_all = False):
-        b, device = img.shape[0], img.device
+        b, h, w, _, device = *img.shape, img.device
         iters = default(iters, self.levels * 2)   # need to have twice the number of levels of iterations in order for information to propagate up and back down. can be overridden
 
         tokens = self.image_to_tokens(img)
