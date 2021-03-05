@@ -45,8 +45,8 @@ model = Glom(
 img = torch.randn(1, 3, 224, 224)
 all_levels = model(img, iters = 12, return_all = True) # (13, 1, 256, 6, 512) - (batch, patches, levels, dimension)
 
-# get the top level outputs at iteration 6
-top_level_output = all_levels[7, :, :, 5] # (1, 256, 512) - (batch, patches, dimension)
+# get the top level outputs after iteration 6
+top_level_output = all_levels[7, :, :, -1] # (1, 256, 512) - (batch, patches, dimension)
 ```
 
 ## Citations
