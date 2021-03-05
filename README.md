@@ -4,7 +4,7 @@
 
 ## GLOM - Pytorch
 
-An attempt at the implementation of <a href="https://arxiv.org/abs/2102.12627">Glom</a>, Geoffrey Hinton's new idea that integrates neural fields, predictive coding, top-down-bottom-up, and attention (consensus between columns) for emergent part-whole heirarchies from data.
+An attempt at the implementation of <a href="https://arxiv.org/abs/2102.12627">Glom</a>, Geoffrey Hinton's new idea that integrates concepts from neural fields, top-down-bottom-up processing, and attention (consensus between columns) for emergent part-whole heirarchies from data.
 
 ## Install
 
