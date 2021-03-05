@@ -85,7 +85,7 @@ class Glom(nn.Module):
         # consensus attention
         self.attention = ConsensusAttention(attend_self = consensus_self)
 
-    def forward(self, img, iters = None):
+    def forward(self, img, iters = None, return_all = False):
         b, device = img.shape[0], img.device
         iters = default(iters, self.levels * 2)   # need to have twice the number of levels of iterations in order for information to propagate up and back down. can be overridden
 
@@ -97,6 +97,8 @@ class Glom(nn.Module):
         bottom_level = rearrange(bottom_level, 'b n d -> b n () d')
 
         levels = repeat(self.init_levels, 'l d -> b n l d', b = b, n = n)
+
+        hiddens = [levels]
 
         for _ in range(iters):
             levels = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
@@ -111,5 +113,10 @@ class Glom(nn.Module):
 
             levels = torch.stack((levels, bottom_up_out, top_down_out, consensus)).mean(dim = 0) # hinton said to use the weighted mean of (1) bottom up (2) top down (3) previous level value {t - 1} (4) consensus value
             levels = levels[..., 1:, :]  # excise out the bottom level
+
+            hiddens.append(levels)
+
+        if return_all:
+            return torch.stack(hiddens)  # return (time step, batch, num columns, levels, dimension)
 
         return levels

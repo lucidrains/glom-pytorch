@@ -29,6 +29,26 @@ img = torch.randn(1, 3, 224, 224)
 levels = model(img, iters = 12) # (1, 256, 6, 512) - (batch - patches - levels - dimension)
 ```
 
+If you were to pass the `return_all = True` keyword argument on forward, you will be returned all the column and level states per iteration, including the initial state (so number of iterations + 1). You can then use this to attach any losses to any time step you wish, to induce emergence of whatever.
+
+```python
+import torch
+from glom_pytorch import Glom
+
+model = Glom(
+    dim = 512,         # dimension
+    levels = 6,        # number of levels
+    image_size = 224,  # image size
+    patch_size = 14    # patch size
+)
+
+img = torch.randn(1, 3, 224, 224)
+all_levels = model(img, iters = 12, return_all = True) # (13, 1, 256, 6, 512) - (batch, patches, levels, dimension)
+
+# get the top level outputs at iteration 6
+top_level_output = all_levels[7, :, :, 5] # (1, 256, 512) - (batch, patches, dimension)
+```
+
 ## Citations
 
 ```bibtex
