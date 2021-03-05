@@ -25,17 +25,15 @@ class GroupedFeedForward(nn.Module):
         super().__init__()
         total_dim = dim * groups # levels * dim
         self.net = nn.Sequential(
+            Rearrange('b n l d -> b (l d) n'),
             nn.Conv1d(total_dim, total_dim * 4, 1, groups = groups),
             nn.GELU(),
-            nn.Conv1d(total_dim * 4, total_dim, 1, groups = groups)
+            nn.Conv1d(total_dim * 4, total_dim, 1, groups = groups),
+            Rearrange('b (l d) n -> b n l d', l = groups)
         )
 
     def forward(self, levels):
-        b, n, l, d = levels.shape
-        levels = rearrange(levels, 'b n l d -> b (l d) n')
-        out = self.net(levels)
-        out = rearrange(out, 'b (l d) n -> b n l d', l = l)
-        return out
+        return self.net(levels)
 
 class ConsensusAttention(nn.Module):
     def __init__(self, attend_self = True, local_consensus_radius = 0):
