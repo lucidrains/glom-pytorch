@@ -65,7 +65,6 @@ class ConsensusAttention(nn.Module):
             sim.masked_fill_(self_mask, TOKEN_ATTEND_SELF_VALUE)
 
         if self.local_consensus_radius > 0:
-            h = w = int(sqrt(n))
             max_neg_value = -torch.finfo(sim.dtype).max
             sim.masked_fill_(self.non_local_mask, max_neg_value)
 
