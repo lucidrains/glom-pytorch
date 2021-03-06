@@ -26,9 +26,9 @@ class GroupedFeedForward(nn.Module):
         total_dim = dim * groups # levels * dim
         self.net = nn.Sequential(
             Rearrange('b n l d -> b (l d) n'),
-            nn.Conv1d(total_dim, total_dim * 4, 1, groups = groups),
+            nn.Conv1d(total_dim, total_dim * mult, 1, groups = groups),
             nn.GELU(),
-            nn.Conv1d(total_dim * 4, total_dim, 1, groups = groups),
+            nn.Conv1d(total_dim * mult, total_dim, 1, groups = groups),
             Rearrange('b (l d) n -> b n l d', l = groups)
         )
 
@@ -101,7 +101,7 @@ class Glom(nn.Module):
         self.init_levels = nn.Parameter(torch.randn(levels, dim))
 
         # bottom-up and top-down
-        self.bottom_up = GroupedFeedForward(dim = dim, groups = levels - 1)
+        self.bottom_up = GroupedFeedForward(dim = dim, groups = levels)
         self.top_down = GroupedFeedForward(dim = dim, groups = levels - 1)
 
         # consensus attention
@@ -131,10 +131,9 @@ class Glom(nn.Module):
         for _ in range(iters):
             levels_with_input = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
 
-            bottom_up_out = self.bottom_up(levels_with_input[..., 1:-1, :])
-            top_down_out = self.top_down(levels_with_input[..., 2:, :] + pos_embs) # positional embeddings given to top-down networks
+            bottom_up_out = self.bottom_up(levels_with_input[..., :-1, :])
 
-            bottom_up_out = torch.cat((bottom_level, bottom_up_out), dim = -2)
+            top_down_out = self.top_down(levels_with_input[..., 2:, :] + pos_embs) # positional embeddings given to top-down networks
             top_down_out = F.pad(top_down_out, (0, 0, 0, 1), value = 0.)
 
             consensus = self.attention(levels)
