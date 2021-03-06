@@ -129,7 +129,7 @@ class Glom(nn.Module):
         num_contributions[-1] = 3  # top level does not get a top-down contribution, so have to account for this when doing the weighted mean
 
         for _ in range(iters):
-            levels_with_input = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input (with positional embedding) at the bottom level
+            levels_with_input = torch.cat((bottom_level, levels), dim = -2)  # each iteration, attach original input at the most bottom level, to be bottomed-up
 
             bottom_up_out = self.bottom_up(levels_with_input[..., :-1, :])
 
