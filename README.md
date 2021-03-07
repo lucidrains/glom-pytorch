@@ -6,6 +6,8 @@
 
 An implementation of <a href="https://arxiv.org/abs/2102.12627">Glom</a>, Geoffrey Hinton's new idea that integrates concepts from neural fields, top-down-bottom-up processing, and attention (consensus between columns) for learning emergent part-whole heirarchies from data.
 
+<a href="https://www.youtube.com/watch?v=cllFzkvrYmE">Yannic Kilcher's video</a> was instrumental in helping me to understand this paper
+
 ## Install
 
 ```bash
