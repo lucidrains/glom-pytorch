@@ -108,7 +108,7 @@ class Glom(nn.Module):
         self.attention = ConsensusAttention(num_patches_side, attend_self = consensus_self, local_consensus_radius = local_consensus_radius)
 
     def forward(self, img, iters = None, levels = None, return_all = False):
-        b, h, w, _, device = *img.shape, img.device
+        b, device = img.shape[0], img.device
         iters = default(iters, self.levels * 2)   # need to have twice the number of levels of iterations in order for information to propagate up and back down. can be overridden
 
         tokens = self.image_to_tokens(img)
